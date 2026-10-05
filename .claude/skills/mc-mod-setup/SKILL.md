@@ -24,3 +24,24 @@ Ask the user for the loader and Minecraft version if not stated; do not guess.
 ## Pitfalls
 - Never reference client classes (`Minecraft`, renderers, screens) from common/server code.
 - Use official Mojang mappings or Yarn consistently; do not mix.
+
+## This repo's target: Fabric 26.2 + 26.3
+Values checked against `meta.fabricmc.net` and `FabricMC/fabric-example-mod` (branch `26.3`) on 2026-10-05; re-check before bumping.
+
+| | 26.2 | 26.3 |
+|---|---|---|
+| `minecraft_version` | `26.2` | `26.3` |
+| `loader_version` | `0.19.5` | `0.19.5` |
+| `fabric_api_version` | `0.161.0+26.2` | `0.161.0+26.3` |
+| `loom_version` | `1.18-SNAPSHOT` | `1.18-SNAPSHOT` |
+| Java | 25 | 25 |
+
+26.x differences vs 1.21.x:
+- Game ships **unobfuscated**: no Yarn/mappings line in `dependencies`; code uses Mojang names directly.
+- Plugin id `net.fabricmc.fabric-loom`; deps use `implementation` (not `modImplementation`).
+- `loom { splitEnvironmentSourceSets() }` -> client code in `src/client/java`, entrypoint `client` in `fabric.mod.json`.
+- `fabric.mod.json` depends: `"minecraft": "~26.3"` (or `">=26.2 <26.4"` for one jar covering both), `"java": ">=25"`.
+
+Two versions from one codebase:
+- If APIs used are identical on both -> one jar, `minecraft` range `>=26.2 <26.4`, build against 26.2, test `runClient` on both.
+- If they diverge -> multi-version setup (e.g. Stonecutter) with per-version `gradle.properties`; do not copy-paste source trees.

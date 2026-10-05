@@ -1,0 +1,30 @@
+{
+	"schemaVersion": 1,
+	"id": "aibuilders",
+	"version": "${version}",
+	"name": "AI Builders",
+	"description": "Player-like builder NPCs that construct Litematica (.litematic) and structure (.nbt) schematics.",
+	"authors": [
+		"bluetwinklez"
+	],
+	"contact": {
+		"sources": "https://github.com/Bluetwinklez/minecraf-ai-agent"
+	},
+	"license": "MIT",
+	"icon": "assets/aibuilders/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.bluetwinklez.aibuilders.AiBuilders"
+		],
+		"client": [
+			"com.bluetwinklez.aibuilders.client.AiBuildersClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": ">=26.2 <26.4",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

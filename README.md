@@ -62,6 +62,8 @@ geçer; boş elle sağ tık durum + eksik malzeme listesini gösterir.
 ## Geliştirme
 - `./gradlew build` – derleme + unit testler
 - `./gradlew runGameTest` – başsız sunucuda oyun testleri (inşa, sandık, eksik malzeme, iskele, rotasyon)
+- `./gradlew runClientGameTest` – gerçek istemciyi açar, tek oyunculu dünyada NPC'yi (Notch skin'iyle) spawn edip
+  küçük bir kulübe inşa ettirir ve ekran görüntüsü alır (OpenGL gerekir; kendi bilgisayarında çalıştır)
 - `./gradlew runClient` / `runServer` – elle deneme
 
 ## Claude skill'leri (`.claude/skills/`)

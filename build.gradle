@@ -28,7 +28,7 @@ fabricApi {
 		createSourceSet = true
 		modId = "aibuilders-gametest"
 		enableGameTests = true
-		enableClientGameTests = false
+		enableClientGameTests = true
 		eula = true
 	}
 }

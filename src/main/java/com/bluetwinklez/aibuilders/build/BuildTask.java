@@ -1,6 +1,7 @@
 package com.bluetwinklez.aibuilders.build;
 
 import com.bluetwinklez.aibuilders.AiBuilders;
+import com.bluetwinklez.aibuilders.Compat;
 import com.bluetwinklez.aibuilders.build.schematic.SchematicStore;
 import com.bluetwinklez.aibuilders.config.AiBuildersConfig;
 import com.bluetwinklez.aibuilders.entity.AgentNpc;
@@ -27,12 +28,10 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.Container;
 import net.minecraft.world.BossEvent;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Mirror;
@@ -600,7 +599,7 @@ public class BuildTask implements AgentTask {
 		npc.teleportTo(place.getX() + 0.5, place.getY() + 1, place.getZ() + 0.5);
 		level.setBlock(place, Blocks.SCAFFOLDING.defaultBlockState(), Block.UPDATE_ALL);
 		playPlaceSound(level, place, Blocks.SCAFFOLDING.defaultBlockState());
-		npc.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT);
+		Compat.swingMainHand(npc);
 		scaffoldHeight++;
 	}
 
@@ -640,7 +639,7 @@ public class BuildTask implements AgentTask {
 		npc.getLookControl().setLookAt(Vec3.atCenterOf(pos));
 		level.setBlock(pos, wanted, PLACE_FLAGS);
 		playPlaceSound(level, pos, wanted);
-		npc.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT);
+		Compat.swingMainHand(npc);
 		markDone(index);
 		currentIndex = -1;
 	}
@@ -658,7 +657,7 @@ public class BuildTask implements AgentTask {
 		BlockEntity be = level.getBlockEntity(pos);
 		List<ItemStack> drops = survival() ? Block.getDrops(state, level, pos, be) : List.of();
 		npc.getLookControl().setLookAt(Vec3.atCenterOf(pos));
-		npc.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT);
+		Compat.swingMainHand(npc);
 		level.destroyBlock(pos, false, npc, 512);
 		for (ItemStack drop : drops) {
 			giveOrDrop(npc, level, drop);
@@ -808,7 +807,7 @@ public class BuildTask implements AgentTask {
 		wanted.replaceAll((item, n) -> n - own.getOrDefault(item, 0));
 		int moved = MaterialInventory.transfer(container, npc.getInventory(), wanted);
 		level.playSound(null, source, SoundEvents.CHEST_OPEN, SoundSource.BLOCKS, 0.5F, 1.0F);
-		npc.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT);
+		Compat.swingMainHand(npc);
 		if (moved == 0) {
 			// Inventory full or the chest changed; do not walk back here for a while.
 			skipContainerUntil.put(source, level.getGameTime() + 200);

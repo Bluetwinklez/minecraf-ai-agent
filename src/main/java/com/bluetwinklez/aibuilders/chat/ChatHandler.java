@@ -153,7 +153,8 @@ public final class ChatHandler {
 	}
 
 	private static void answer(MinecraftServer server, UUID playerId, String reply, boolean remember) {
-		String clean = reply.replace('\n', ' ').replaceAll("\\s+", " ").strip();
+		// Model output is untrusted: drop legacy formatting codes and control characters.
+		String clean = reply.replace('\u00a7', ' ').replaceAll("\\p{Cntrl}", " ").replaceAll("\\s+", " ").strip();
 		if (clean.length() > 400) {
 			clean = clean.substring(0, 400) + "...";
 		}

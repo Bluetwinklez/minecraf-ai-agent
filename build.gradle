@@ -22,7 +22,23 @@ loom {
 	}
 }
 
+fabricApi {
+	// Adds the "gametest" source set and the runGameTest task (headless server running @GameTest methods).
+	configureTests {
+		createSourceSet = true
+		modId = "aibuilders-gametest"
+		enableGameTests = true
+		enableClientGameTests = false
+		eula = true
+	}
+}
+
 dependencies {
+	testImplementation platform("org.junit:junit-bom:5.12.2")
+	testImplementation "org.junit.jupiter:junit-jupiter"
+	testImplementation "org.junit.jupiter:junit-jupiter-params"
+	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
@@ -52,6 +68,10 @@ java {
 
 	sourceCompatibility = JavaVersion.VERSION_25
 	targetCompatibility = JavaVersion.VERSION_25
+}
+
+test {
+	useJUnitPlatform()
 }
 
 jar {

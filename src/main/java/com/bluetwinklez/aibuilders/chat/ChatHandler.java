@@ -2,6 +2,12 @@ package com.bluetwinklez.aibuilders.chat;
 
 import com.bluetwinklez.aibuilders.AiBuilders;
 import com.bluetwinklez.aibuilders.ai.ClaudeProvider;
+import com.bluetwinklez.aibuilders.ai.AgentLoop;
+import com.bluetwinklez.aibuilders.ai.ToolRegistry;
+import com.bluetwinklez.aibuilders.build.schematic.SchematicStore;
+import com.bluetwinklez.aibuilders.command.BuilderActions;
+import net.minecraft.world.level.block.Mirror;
+import net.minecraft.world.level.block.Rotation;
 import com.bluetwinklez.aibuilders.ai.LlmProvider;
 import com.bluetwinklez.aibuilders.ai.OllamaProvider;
 import com.bluetwinklez.aibuilders.build.BillOfMaterials;
@@ -100,7 +106,14 @@ public final class ChatHandler {
 
 	// --- "Claude ..." -------------------------------------------------------------
 
-	private static void ask(ServerPlayer player, String question) {
+	/**
+	 * Test hook: per-player provider replacing the configured one (empty Optional = no model,
+	 * i.e. the offline path). Keyed by player so parallel GameTests do not interfere.
+	 */
+	public static final Map<UUID, Optional<LlmProvider>> TEST_PROVIDERS = new java.util.concurrent.ConcurrentHashMap<>();
+
+	/** Handles one "Claude ..." question from {@code player}. Server thread. */
+	public static void ask(ServerPlayer player, String question) {
 		MinecraftServer server = player.level().getServer();
 		AiBuildersConfig config = AiBuildersConfig.get();
 		long now = server.getTickCount();
@@ -118,33 +131,49 @@ public final class ChatHandler {
 		AgentNpc npc = nearestNpc(player);
 		String context = context(player, npc);
 		String fallback = cannedAnswer(question, player, npc);
-		String system = systemPrompt(player, context);
+		String finalQuestion = question;
+		Runnable offline = () -> answerOffline(player, finalQuestion, fallback);
+		String system = systemPrompt(player, context, config.chatToolsEnabled);
 		Deque<LlmProvider.Message> history = HISTORY.computeIfAbsent(player.getUUID(), k -> new ArrayDeque<>());
 		history.addLast(new LlmProvider.Message("user", question));
 		trim(history);
 		List<LlmProvider.Message> snapshot = new ArrayList<>(history);
-		LlmProvider provider = provider(config);
+		Optional<LlmProvider> testProvider = TEST_PROVIDERS.get(player.getUUID());
+		LlmProvider provider = testProvider != null ? testProvider.orElse(null) : provider(config);
 		UUID playerId = player.getUUID();
 
 		if (provider == null) {
-			answer(server, playerId, fallback, false);
+			history.clear();
+			offline.run();
 			return;
 		}
+		List<LlmProvider.ToolSpec> tools = config.chatToolsEnabled ? ToolRegistry.specs() : List.of();
 		try {
 			WORKER.execute(() -> {
-				String reply;
-				boolean fromModel = true;
+				List<Component> notes = java.util.Collections.synchronizedList(new ArrayList<>());
 				try {
-					reply = provider.reply(system, snapshot);
+					AgentLoop.Result result = AgentLoop.run(provider, system, snapshot, tools,
+						call -> ToolRegistry.execute(server, player, call, notes::add), Math.max(0, config.maxToolRounds));
+					server.execute(() -> {
+						if (!result.text().isBlank()) {
+							answer(server, playerId, result.text(), true);
+						}
+						for (Component note : notes) {
+							server.getPlayerList().broadcastSystemMessage(
+								(result.text().isBlank() ? prefix() : Component.literal("  \u2192 ")).append(note.copy()).withStyle(ChatFormatting.GRAY), false);
+						}
+						if (result.text().isBlank() && notes.isEmpty()) {
+							answer(server, playerId, "?", false);
+						}
+					});
 				} catch (Exception e) {
 					AiBuilders.LOGGER.warn("Chat provider '{}' failed: {}", config.provider, e.toString());
-					server.execute(() -> warnOpsOnce(server, e));
-					reply = fallback;
-					fromModel = false;
+					server.execute(() -> {
+						warnOpsOnce(server, e);
+						history.clear();
+						offline.run();
+					});
 				}
-				String finalReply = reply;
-				boolean remember = fromModel;
-				server.execute(() -> answer(server, playerId, finalReply, remember));
 			});
 		} catch (RejectedExecutionException e) {
 			history.pollLast();
@@ -152,9 +181,47 @@ public final class ChatHandler {
 		}
 	}
 
+	/** No model: try to understand a simple command, otherwise give the canned answer. Server thread. */
+	private static void answerOffline(ServerPlayer player, String question, String fallback) {
+		MinecraftServer server = player.level().getServer();
+		BuilderActions.Actor actor = BuilderActions.Actor.of(player);
+		List<String> npcNames = BuilderActions.allNpcs(server).stream().map(AgentNpc::npcName).toList();
+		Optional<IntentParser.Intent> intent = IntentParser.parse(question, npcNames, SchematicStore.list());
+		if (intent.isEmpty() || intent.get().action() == IntentParser.Action.STATUS && intent.get().npc() == null
+			|| intent.get().action() == IntentParser.Action.MATERIALS) {
+			answer(server, player.getUUID(), fallback, false);
+			return;
+		}
+		IntentParser.Intent in = intent.get();
+		String npcName = in.npc();
+		if (npcName == null) {
+			List<AgentNpc> mine = BuilderActions.managedNpcs(actor);
+			if (mine.size() != 1) {
+				answer(server, player.getUUID(), mine.isEmpty()
+					? "Önce bir inşaatçı oluştur: /aib spawn <isim>"
+					: "Hangi inşaatçı? " + String.join(", ", mine.stream().map(AgentNpc::npcName).toList()), false);
+				return;
+			}
+			npcName = mine.getFirst().npcName();
+		}
+		BuilderActions.Result result = switch (in.action()) {
+			case BUILD -> BuilderActions.build(actor, npcName, in.schematic(),
+				in.here() ? player.blockPosition() : BuilderActions.lookingPos(player), Rotation.NONE, Mirror.NONE);
+			case STOP -> BuilderActions.stop(actor, npcName);
+			case PAUSE -> BuilderActions.setPaused(actor, npcName, true);
+			case RESUME -> BuilderActions.setPaused(actor, npcName, false);
+			default -> null;
+		};
+		if (result == null) {
+			String name = npcName;
+			answer(server, player.getUUID(), BuilderActions.findNpc(server, name).map(BuilderActions::describe).orElse(fallback), false);
+			return;
+		}
+		server.getPlayerList().broadcastSystemMessage(prefix().append(result.message().copy()), false);
+	}
+
 	private static void answer(MinecraftServer server, UUID playerId, String reply, boolean remember) {
-		// Model output is untrusted: drop legacy formatting codes and control characters.
-		String clean = reply.replace('\u00a7', ' ').replaceAll("\\p{Cntrl}", " ").replaceAll("\\s+", " ").strip();
+		String clean = clean(reply);
 		if (clean.length() > 400) {
 			clean = clean.substring(0, 400) + "...";
 		}
@@ -168,6 +235,11 @@ public final class ChatHandler {
 			}
 		}
 		server.getPlayerList().broadcastSystemMessage(prefix().append(Component.literal(clean)), false);
+	}
+
+	/** Model output is untrusted: drop legacy formatting codes and control characters. */
+	private static String clean(String text) {
+		return text.replace('\u00a7', ' ').replaceAll("\\p{Cntrl}", " ").replaceAll("\\s+", " ").strip();
 	}
 
 	private static void trim(Deque<LlmProvider.Message> history) {
@@ -206,14 +278,22 @@ public final class ChatHandler {
 		return Component.literal("[" + AiBuildersConfig.get().chatTriggerWord + "] ").withStyle(ChatFormatting.AQUA);
 	}
 
-	private static String systemPrompt(ServerPlayer player, String context) {
+	private static String systemPrompt(ServerPlayer player, String context, boolean tools) {
+		String actions = tools
+			? """
+				You can act through the provided tools: list NPCs and schematics, check status and materials, start, pause, resume
+				or stop builds, and spawn builders. Only use the tools; never invent results. If the NPC or schematic name is unclear,
+				call list_npcs or list_schematics first. If a tool fails, tell the player why in one sentence.
+				For start_build use position "here" when the player says here/buraya, otherwise "looking"."""
+			: """
+				You cannot run commands or control NPCs yourself; if asked, explain which /aib command the player can use
+				(spawn, build, preview, materials, status, pause, resume, stop, schematics).""";
 		return """
 			You are %s, a helpful assistant inside a Minecraft server, talking in the public chat.
 			Answer in the same language the player used. Keep answers very short: at most two sentences, plain text, no markdown.
-			You cannot run commands or control NPCs yourself; if asked, explain which /aib command the player can use
-			(spawn, build, preview, materials, status, pause, resume, stop, schematics).
+			%s
 			Player: %s
-			%s""".formatted(AiBuildersConfig.get().chatTriggerWord, player.getName().getString(), context);
+			%s""".formatted(AiBuildersConfig.get().chatTriggerWord, actions, player.getName().getString(), context);
 	}
 
 	/** Facts about the nearest builder NPC so the model can answer "how many planks do we need?". */

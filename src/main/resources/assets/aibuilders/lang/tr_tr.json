@@ -47,5 +47,7 @@
 	"aibuilders.command.info": "'%s': %s x %s x %s, %s blok, %s bölge.",
 	"aibuilders.command.info_skipped": "Kopyalanmayanlar: %s blok içeriği (sandık/tabela), %s varlık, %s bilinmeyen blok.",
 	"aibuilders.command.schematics": "%s şema:",
-	"aibuilders.command.no_schematics": "Şema yok. .litematic veya .nbt dosyalarını %s ya da %s klasörüne koy."
+	"aibuilders.command.no_schematics": "Şema yok. .litematic veya .nbt dosyalarını %s ya da %s klasörüne koy.",
+	"aibuilders.command.player_only": "Bunu sadece bir oyuncu yapabilir.",
+	"aibuilders.command.bad_name": "'%s' geçerli bir isim değil (1-16 harf, rakam veya _)."
 }

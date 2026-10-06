@@ -19,13 +19,17 @@ Check real signatures in the decompiled sources (`./gradlew genSources`, jar und
 | `build/MaterialResolver` | state -> item cost (upper door/bed half free, double slab = 2, candles/pickles/layers = count) |
 | `build/BuildTask` | the job: pick target (lookahead prefers in-reach), walk, fetch from chests, wait + report, break obstructions, scaffold, place with `UPDATE_CLIENTS | UPDATE_KNOWN_SHAPE` |
 | `entity/AgentNpc` | `PathfinderMob` + synced `ResolvableProfile`; client renders it through the vanilla player renderer via `AvatarRenderState` |
-| `chat/ChatHandler` | `sa` -> `as`; `Claude ...` -> Ollama / Claude API / canned answers on a single worker thread |
+| `chat/ChatHandler` | `sa` -> `as`; `Claude ...` -> `ai/AgentLoop` (model + tools) on a single worker thread, offline -> `chat/IntentParser` |
+| `command/BuilderActions` | Shared spawn/build/stop/pause logic + owner/op checks, used by `/aib` **and** the model's tools |
+| `ai/ToolRegistry` | The only actions the model can take; arguments are untrusted, world access hops to the server thread |
+| `chat/NameMatcher` | Fuzzy NPC/schematic names (case, Turkish letters, prefix, typos, folder file names) |
 
 ## Rules
 - Never touch the world off the server thread. Schematic loading and LLM calls run on worker threads and hand results back with `server.execute`.
 - Never `getBlockState` on unloaded chunks (`level.isLoaded(pos)` first) - it would load them.
 - Every player-facing string is a lang key in both `en_us.json` and `tr_tr.json`.
 - Missing materials: always list **every** missing item with counts (largest first), owner gets the full list, nearby players a one-liner; do not repeat an unchanged list.
+- New player-facing actions go into `BuilderActions` first, then a command and (if safe) a tool. Never give the model an action the player could not run themselves; destructive ones (remove) stay command-only.
 - Persist only what is needed to resume (schematic name, origin, rotation, mirror, mode, fingerprint); progress is recomputed from the world.
 
 ## Verify

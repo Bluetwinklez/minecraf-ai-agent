@@ -1,0 +1,48 @@
+# Builds the mod, runs unit tests and headless GameTests (part of `build`) against 26.3,
+# then builds and tests again against 26.2.
+
+name: build
+on: [pull_request, push]
+
+concurrency:
+  group: build-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+      - name: validate gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+      - name: setup jdk
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+      - name: setup gradle (dependency cache)
+        uses: gradle/actions/setup-gradle@v6
+      - name: make gradle wrapper executable
+        run: chmod +x ./gradlew
+      - name: build and test (26.3)
+        timeout-minutes: 12
+        run: ./gradlew build --no-daemon --stacktrace
+      - name: capture build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: Artifacts
+          path: build/libs/
+      - name: build and test (26.2)
+        timeout-minutes: 12
+        run: ./gradlew build --no-daemon --stacktrace -Pminecraft_version=26.2 -Pfabric_api_version=0.161.0+26.2
+      - name: upload game test logs
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gametest-logs
+          path: |
+            build/run/**/logs/
+            build/reports/
+          if-no-files-found: ignore

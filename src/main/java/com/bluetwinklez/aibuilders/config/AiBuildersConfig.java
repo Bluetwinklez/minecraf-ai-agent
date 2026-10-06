@@ -52,6 +52,9 @@ public class AiBuildersConfig {
 	public int maxTokens = 200;
 	public int chatTimeoutSeconds = 30;
 	public int chatCooldownSeconds = 5;
+	/** Let the chat model start/stop builds etc. through tools (with the asking player's permissions). */
+	public boolean chatToolsEnabled = true;
+	public int maxToolRounds = 3;
 
 	public static AiBuildersConfig get() {
 		return instance;

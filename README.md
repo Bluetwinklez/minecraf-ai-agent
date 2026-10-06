@@ -37,11 +37,20 @@ geçer; boş elle sağ tık durum + eksik malzeme listesini gösterir.
 ## Sohbet
 - Oyuncu `sa` yazarsa en yakın NPC `as` der.
 - `Claude ...` ile başlayan mesajlara (örn. `Claude test test`) yapay zekâ herkese görünür cevap verir.
+- **Claude ile görev verme:** yapay zekâ NPC'leri senin yetkinle yönetebilir:
+  - `Claude, Ali ev şemasını buraya kursun` → Ali `ev`'i bulunduğun yere kurar (`buraya` yoksa baktığın bloğa)
+  - `Claude Ali'yi durdur` / `Claude Ali beklesin` / `Claude Ali devam etsin`
+  - `Claude Ali ne yapıyor?` / `Claude ev için ne lazım?`
+  - `Claude yeni bir inşaatçı yap, adı Veli olsun`
+  - Yapay zekâ, senin komutla yapamayacağın hiçbir şeyi yapamaz (başkasının NPC'si, NPC limiti). NPC silme yapay zekâya kapalı.
+  - Model yoksa veya ulaşılamazsa basit cümleler yine anlaşılır: `Claude Ali kuleyi kur`, `Claude Ali dur`, `Claude Ali devam`.
+- Model seçenekleri:
   - Varsayılan: **Ollama** (ücretsiz, kendi VDS'inde). Kurulum:
     ```
     curl -fsSL https://ollama.com/install.sh | sh
     ollama pull qwen2.5:3b
     ```
+    Görev vermede daha isabetli sonuç için güçlü bir VDS'de `qwen2.5:7b` (`ollamaModel`).
     MC sunucusu aynı makinedeyse `ollamaUrl` `http://127.0.0.1:11434` kalsın ve **11434 portunu dışarı açma**
     (Ollama'da şifre yok). Farklı makinedeyse portu sadece MC sunucusunun IP'sine aç.
   - İstersen `provider: "claude"` + `claudeApiKey` (veya `ANTHROPIC_API_KEY`) ile Claude API (ücretli).
@@ -51,7 +60,7 @@ geçer; boş elle sağ tık durum + eksik malzeme listesini gösterir.
 `buildMode` (`SURVIVAL`/`CREATIVE`), `blocksPerSecond`, `reach`, `chestSearchRadius`, `clearObstructions`,
 `useScaffolding`, `allowTeleportWhenStuck`, `maxNpcsPerPlayer`, `maxSchematicBlocks`, `materialRecheckSeconds`,
 `showBossBar`, `chatRadius`, `greetings`, `chatEnabled`, `chatTriggerWord`, `provider`, `ollamaUrl`, `ollamaModel`,
-`claudeModel`, `claudeApiKey`, `maxTokens`, `chatTimeoutSeconds`, `chatCooldownSeconds`.
+`claudeModel`, `claudeApiKey`, `maxTokens`, `chatTimeoutSeconds`, `chatCooldownSeconds`, `chatToolsEnabled`, `maxToolRounds`.
 
 ## Bilinen sınırlar
 - Bir inşaatı tek NPC yapar. İskele sadece yapının dışına dikey sütun; dışarıdan erişilemeyen iç kısımlar

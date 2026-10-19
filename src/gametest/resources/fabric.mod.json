@@ -1,0 +1,19 @@
+{
+	"schemaVersion": 1,
+	"id": "aibuilders-gametest",
+	"version": "1.0.0",
+	"name": "AI Builders GameTests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"com.bluetwinklez.aibuilders.gametest.BuilderGameTests",
+			"com.bluetwinklez.aibuilders.gametest.ChatToolGameTests"
+		],
+		"fabric-client-gametest": [
+			"com.bluetwinklez.aibuilders.gametest.BuilderClientGameTest"
+		]
+	},
+	"depends": {
+		"aibuilders": "*"
+	}
+}

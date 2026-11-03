@@ -88,9 +88,9 @@ public final class SchematicStore {
 		for (Path root : roots()) {
 			Path normalizedRoot = root.toAbsolutePath().normalize();
 			for (String ext : candidatesFor(name)) {
-				Path file = normalizedRoot.resolve(ext).normalize();
-				if (file.startsWith(normalizedRoot) && Files.isRegularFile(file)) {
-					return Optional.of(file);
+				Optional<Path> file = SchematicPaths.findWithin(normalizedRoot, ext);
+				if (file.isPresent()) {
+					return file;
 				}
 			}
 		}

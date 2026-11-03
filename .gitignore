@@ -38,3 +38,10 @@ hs_err_*.log
 replay_*.log
 *.hprof
 *.jfr
+
+# Server-local credentials and world/profile data
+.env
+.env.*
+!.env.example
+config/aibuilders.json
+run/

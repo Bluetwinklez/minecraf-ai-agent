@@ -25,16 +25,19 @@ final class HttpJson {
 		headers.forEach(request::header);
 		HttpResponse<String> response = CLIENT.send(request.build(), HttpResponse.BodyHandlers.ofString());
 		if (response.statusCode() / 100 != 2) {
-			throw new IOException("HTTP " + response.statusCode() + ": " + truncate(response.body()));
+			throw new IOException("Provider returned HTTP " + response.statusCode());
 		}
-		JsonElement json = JsonParser.parseString(response.body());
+		JsonElement json;
+		try {
+			json = JsonParser.parseString(response.body());
+		} catch (com.google.gson.JsonParseException e) {
+			// Provider bodies may contain credentials or private prompt content.
+			throw new IOException("Provider returned invalid JSON");
+		}
 		if (!json.isJsonObject()) {
-			throw new IOException("Unexpected response: " + truncate(response.body()));
+			throw new IOException("Provider returned a non-object JSON response");
 		}
 		return json.getAsJsonObject();
 	}
 
-	private static String truncate(String s) {
-		return s.length() > 300 ? s.substring(0, 300) + "..." : s;
-	}
 }

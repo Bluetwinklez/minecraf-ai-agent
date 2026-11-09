@@ -7,6 +7,9 @@
 	"entrypoints": {
 		"fabric-gametest": [
 			"com.bluetwinklez.aibuilders.gametest.BuilderGameTests"
+		],
+		"fabric-client-gametest": [
+			"com.bluetwinklez.aibuilders.gametest.BuilderClientGameTest"
 		]
 	},
 	"depends": {

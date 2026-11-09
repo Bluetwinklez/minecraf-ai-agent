@@ -67,6 +67,10 @@ public class BuilderGameTests {
 		return dir;
 	}
 
+	static void writeStructurePublic(String name, int sx, int sy, int sz, Map<BlockPos, BlockState> blocks) {
+		writeStructure(name, sx, sy, sz, blocks);
+	}
+
 	/** Writes a vanilla structure file: blocks maps "x,y,z" to a state. */
 	private static void writeStructure(String name, int sx, int sy, int sz, Map<BlockPos, BlockState> blocks) {
 		CompoundTag root = new CompoundTag();

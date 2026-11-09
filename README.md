@@ -89,3 +89,6 @@ geçer; boş elle sağ tık durum + eksik malzeme listesini gösterir.
 | `mc-npc-builder` | Bu repodaki inşaatçı NPC kodu |
 | `caveman-mode` | Kısa cevap modu |
 | `adhd-mode` | Adım adım odaklı cevap modu |
+
+## Güvenlik
+[Güvenlik politikası](SECURITY.md) · [Depo güvenlik denetimi](SECURITY_AUDIT.md)

@@ -35,7 +35,7 @@ public class BuilderGameTests {
 
 	// --- helpers ------------------------------------------------------------------
 
-	private static void setUp(GameTestHelper helper) {
+	static void setUp(GameTestHelper helper) {
 		AiBuildersConfig config = AiBuildersConfig.get();
 		config.blocksPerSecond = 40;
 		config.materialRecheckSeconds = 1;
@@ -47,13 +47,13 @@ public class BuilderGameTests {
 		}
 	}
 
-	private static AgentNpc spawnNpc(GameTestHelper helper, int x, int z) {
+	static AgentNpc spawnNpc(GameTestHelper helper, int x, int z) {
 		AgentNpc npc = helper.spawn(ModEntities.BUILDER, new BlockPos(x, 1, z));
 		npc.setup("Tester", "Steve", null);
 		return npc;
 	}
 
-	private static void start(GameTestHelper helper, AgentNpc npc, String schematic, BlockPos rel, Rotation rotation, AiBuildersConfig.BuildMode mode) {
+	static void start(GameTestHelper helper, AgentNpc npc, String schematic, BlockPos rel, Rotation rotation, AiBuildersConfig.BuildMode mode) {
 		npc.taskRunner().start(new BuildTask(schematic, helper.absolutePos(rel), Mirror.NONE, rotation, mode), npc, helper.getLevel());
 	}
 
@@ -133,7 +133,7 @@ public class BuilderGameTests {
 		}
 	}
 
-	private static ChestBlockEntity chestWith(GameTestHelper helper, BlockPos rel, ItemStack... stacks) {
+	static ChestBlockEntity chestWith(GameTestHelper helper, BlockPos rel, ItemStack... stacks) {
 		helper.setBlock(rel, Blocks.CHEST);
 		ChestBlockEntity chest = (ChestBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(rel));
 		for (int i = 0; i < stacks.length; i++) {

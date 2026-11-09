@@ -2,6 +2,8 @@ package com.bluetwinklez.aibuilders.build;
 
 import com.bluetwinklez.aibuilders.AiBuilders;
 import com.bluetwinklez.aibuilders.Compat;
+import com.bluetwinklez.aibuilders.build.placement.PlacementHandler;
+import com.bluetwinklez.aibuilders.build.placement.PlacementHandlers;
 import com.bluetwinklez.aibuilders.build.schematic.SchematicStore;
 import com.bluetwinklez.aibuilders.config.AiBuildersConfig;
 import com.bluetwinklez.aibuilders.entity.AgentNpc;
@@ -236,8 +238,11 @@ public class BuildTask implements AgentTask {
 				markDone(index);
 				return State.RUNNING;
 			}
-			if (cost instanceof MaterialResolver.Needs needs && MaterialInventory.countIn(npc.getInventory(), needs.item()) < needs.count()) {
-				return startFetchOrWait(npc, level, needs.item());
+			if (cost instanceof MaterialResolver.Needs needs) {
+				Item lacking = firstLacking(npc, needs);
+				if (lacking != null) {
+					return startFetchOrWait(npc, level, lacking);
+				}
 			}
 		}
 
@@ -256,7 +261,7 @@ public class BuildTask implements AgentTask {
 		}
 
 		BlockState current = level.getBlockState(pos);
-		if (!current.isAir() && !current.canBeReplaced() && current != wanted) {
+		if (!current.isAir() && !current.canBeReplaced() && !MaterialResolver.matches(current, wanted) && !wanted.isAir()) {
 			if (!breakObstruction(npc, level, pos, current)) {
 				blocked++;
 				markDone(index);
@@ -339,7 +344,7 @@ public class BuildTask implements AgentTask {
 				defer(i, now, 100);
 				continue;
 			}
-			if (level.getBlockState(pos) == p.state(i)) {
+			if (MaterialResolver.matches(level.getBlockState(pos), p.state(i))) {
 				markDone(i);
 				continue;
 			}
@@ -629,19 +634,42 @@ public class BuildTask implements AgentTask {
 	// --- placing / breaking -----------------------------------------------------
 
 	private void place(AgentNpc npc, ServerLevel level, int index, BlockPos pos, BlockState wanted) {
-		if (survival() && MaterialResolver.cost(wanted) instanceof MaterialResolver.Needs needs) {
-			MaterialInventory.take(npc.getInventory(), needs.item(), needs.count());
-			npc.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(needs.item()));
+		PlacementHandler handler = PlacementHandlers.get(wanted);
+		npc.getLookControl().setLookAt(Vec3.atCenterOf(pos));
+		if (handler.place(level, pos, wanted, PLACE_FLAGS) == PlacementHandler.Result.DEFER) {
+			// e.g. the top half of a door waits for the bottom half.
+			defer(index, level.getGameTime(), 40);
+			return;
+		}
+		MaterialResolver.Cost cost = MaterialResolver.cost(wanted);
+		if (survival() && cost instanceof MaterialResolver.Needs needs) {
+			needs.items().forEach((item, n) -> MaterialInventory.take(npc.getInventory(), item, n));
+			needs.refunds().forEach((item, n) -> giveOrDrop(npc, level, new ItemStack(item, n)));
+			Item shown = needs.items().isEmpty() ? (needs.tools().isEmpty() ? Items.AIR : needs.tools().getFirst()) : needs.items().keySet().iterator().next();
+			npc.setItemSlot(EquipmentSlot.MAINHAND, shown == Items.AIR ? ItemStack.EMPTY : new ItemStack(shown));
 		} else if (!survival()) {
 			Item item = wanted.getBlock().asItem();
 			npc.setItemSlot(EquipmentSlot.MAINHAND, item == Items.AIR ? ItemStack.EMPTY : new ItemStack(item));
 		}
-		npc.getLookControl().setLookAt(Vec3.atCenterOf(pos));
-		level.setBlock(pos, wanted, PLACE_FLAGS);
 		playPlaceSound(level, pos, wanted);
 		Compat.swingMainHand(npc);
 		markDone(index);
 		currentIndex = -1;
+	}
+
+	/** The first item (or tool) of {@code needs} the NPC does not have enough of, or null. */
+	private static @Nullable Item firstLacking(AgentNpc npc, MaterialResolver.Needs needs) {
+		for (var e : needs.items().entrySet()) {
+			if (MaterialInventory.countIn(npc.getInventory(), e.getKey()) < e.getValue()) {
+				return e.getKey();
+			}
+		}
+		for (Item tool : needs.tools()) {
+			if (MaterialInventory.countIn(npc.getInventory(), tool) < 1) {
+				return tool;
+			}
+		}
+		return null;
 	}
 
 	private static void playPlaceSound(ServerLevel level, BlockPos pos, BlockState state) {
@@ -701,7 +729,7 @@ public class BuildTask implements AgentTask {
 			}
 			BlockPos pos = plan.pos(i);
 			BlockState wanted = plan.state(i);
-			if (level.isLoaded(pos) && level.getBlockState(pos) == wanted) {
+			if (level.isLoaded(pos) && MaterialResolver.matches(level.getBlockState(pos), wanted)) {
 				continue;
 			}
 			bom.add(MaterialResolver.cost(wanted));

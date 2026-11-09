@@ -18,7 +18,11 @@ public final class BillOfMaterials {
 
 	public void add(MaterialResolver.Cost cost) {
 		switch (cost) {
-			case MaterialResolver.Needs needs -> items.merge(needs.item(), needs.count(), Integer::sum);
+			case MaterialResolver.Needs needs -> {
+				needs.items().forEach((item, n) -> items.merge(item, n, Integer::sum));
+				// A tool is needed once, however many blocks use it.
+				needs.tools().forEach(tool -> items.merge(tool, 1, Math::max));
+			}
 			case MaterialResolver.Unplaceable u -> unplaceable++;
 			case MaterialResolver.Free f -> {
 			}

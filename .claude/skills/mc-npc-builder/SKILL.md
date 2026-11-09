@@ -16,7 +16,7 @@ Check real signatures in the decompiled sources (`./gradlew genSources`, jar und
 | `build/schematic/PackedBitArray` | Litematica packing: `bits = max(2, ceil(log2(palette)))`, entries **span longs**, index `y*sx*sz + z*sx + x` |
 | `build/schematic/PaletteFixer` | DataFixer `References.BLOCK_STATE` for old `MinecraftDataVersion`; unknown blocks -> air + counted |
 | `build/BuildPlan` | world positions sorted: solid bottom-up, then non-solid, then fluids; rows snake |
-| `build/MaterialResolver` | state -> item cost (upper door/bed half free, double slab = 2, candles/pickles/layers = count) |
+| `build/placement/PlacementHandlers` | Per-block cost/placement/match rules adapted from structurize (doors/beds/tall plants placed as pairs, fluids cost a bucket and refund it, fire needs flint and steel as a tool, grass/path cost dirt, copper oxidation and fence/wall connections ignored when matching). `MaterialResolver` is the facade |
 | `build/BuildTask` | the job: pick target (lookahead prefers in-reach), walk, fetch from chests, wait + report, break obstructions, scaffold, place with `UPDATE_CLIENTS | UPDATE_KNOWN_SHAPE` |
 | `entity/AgentNpc` | `PathfinderMob` + synced `ResolvableProfile`; client renders it through the vanilla player renderer via `AvatarRenderState` |
 | `chat/ChatHandler` | `sa` -> `as`; `Claude ...` -> `ai/AgentLoop` (model + tools) on a single worker thread, offline -> `chat/IntentParser` |

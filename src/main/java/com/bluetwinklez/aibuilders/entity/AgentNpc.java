@@ -16,12 +16,15 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleContainer;
+import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
+import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.npc.InventoryCarrier;
@@ -49,9 +52,11 @@ public class AgentNpc extends PathfinderMob implements InventoryCarrier {
 	public AgentNpc(final EntityType<? extends AgentNpc> type, final Level level) {
 		super(type, level);
 		this.setPersistenceRequired();
-		this.setPermanentlyInvulnerable(true);
 		this.setCustomNameVisible(true);
-		this.getNavigation().setCanOpenDoors(true);
+		// Cast: in 26.2 the method lives on GroundPathNavigation, in 26.3 on PathNavigation.
+		if (this.getNavigation() instanceof GroundPathNavigation nav) {
+			nav.setCanOpenDoors(true);
+		}
 	}
 
 	public static AttributeSupplier.Builder createAttributes() {
@@ -183,6 +188,12 @@ public class AgentNpc extends PathfinderMob implements InventoryCarrier {
 		return InteractionResult.SUCCESS_SERVER;
 	}
 
+	/** Builders cannot be hurt (only /kill and the void get through), same in 26.2 and 26.3. */
+	@Override
+	public boolean isInvulnerableTo(final ServerLevel level, final DamageSource source) {
+		return !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY);
+	}
+
 	@Override
 	public boolean removeWhenFarAway(final double distSqr) {
 		return false;
@@ -194,7 +205,7 @@ public class AgentNpc extends PathfinderMob implements InventoryCarrier {
 	}
 
 	@Override
-	protected void dropCustomDeathLoot(final ServerLevel level, final net.minecraft.world.damagesource.DamageSource source, final boolean killedByPlayer) {
+	protected void dropCustomDeathLoot(final ServerLevel level, final DamageSource source, final boolean killedByPlayer) {
 		super.dropCustomDeathLoot(level, source, killedByPlayer);
 		dropInventory(level);
 	}

@@ -14,3 +14,4 @@ AI agent workspace for Minecraft mod development, focused on NPC mods.
 | `mc-npc-interaction` | Dialogue GUI, trading, quests, packets |
 | `mc-npc-llm` | LLM (Claude API) driven NPC dialogue and actions |
 | `caveman-mode` | Terse reply style, keeps code/game ids verbatim |
+| `adhd-mode` | Focused, step-by-step replies with clear next action |

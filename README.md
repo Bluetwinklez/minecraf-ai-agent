@@ -90,5 +90,8 @@ geçer; boş elle sağ tık durum + eksik malzeme listesini gösterir.
 | `caveman-mode` | Kısa cevap modu |
 | `adhd-mode` | Adım adım odaklı cevap modu |
 
+## Lisans
+GPL-3.0 (`LICENSE`). Baritone, MineColonies/structurize, Litematica ve Mindcraft'tan uyarlanan kodun kaynakları: [THIRD_PARTY.md](THIRD_PARTY.md).
+
 ## Güvenlik
 [Güvenlik politikası](SECURITY.md) · [Depo güvenlik denetimi](SECURITY_AUDIT.md)

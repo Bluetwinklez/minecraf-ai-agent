@@ -10,7 +10,7 @@
 	"contact": {
 		"sources": "https://github.com/Bluetwinklez/minecraf-ai-agent"
 	},
-	"license": "MIT",
+	"license": "GPL-3.0-only",
 	"icon": "assets/aibuilders/icon.png",
 	"environment": "*",
 	"entrypoints": {

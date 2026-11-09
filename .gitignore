@@ -1,14 +1,47 @@
+# gradle
 
+.gradle/
+/build/
+/out/
+/classes/
 
-# Local credentials and private signing material
+# eclipse
+
+*.launch
+
+# idea
+
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# vscode
+
+.settings/
+.vscode/
+/bin/
+.classpath
+.project
+
+# macos
+
+*.DS_Store
+
+# fabric
+
+/run/
+
+# java
+
+hs_err_*.log
+replay_*.log
+*.hprof
+*.jfr
+
+# Server-local credentials and world/profile data
 .env
 .env.*
 !.env.example
-!.env.template
-*.pem
-*.p12
-*.pfx
-id_rsa
-id_ed25519
-service-account*.json
-credentials.local.json
+config/aibuilders.json
+run/

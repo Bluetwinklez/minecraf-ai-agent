@@ -6,7 +6,8 @@
 	"environment": "*",
 	"entrypoints": {
 		"fabric-gametest": [
-			"com.bluetwinklez.aibuilders.gametest.BuilderGameTests"
+			"com.bluetwinklez.aibuilders.gametest.BuilderGameTests",
+			"com.bluetwinklez.aibuilders.gametest.ChatToolGameTests"
 		],
 		"fabric-client-gametest": [
 			"com.bluetwinklez.aibuilders.gametest.BuilderClientGameTest"

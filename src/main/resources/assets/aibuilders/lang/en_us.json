@@ -47,5 +47,7 @@
 	"aibuilders.command.info": "'%s': %s x %s x %s, %s blocks, %s region(s).",
 	"aibuilders.command.info_skipped": "Not copied: %s block entity contents, %s entities, %s unknown blocks.",
 	"aibuilders.command.schematics": "%s schematics:",
-	"aibuilders.command.no_schematics": "No schematics found. Put .litematic or .nbt files in %s or %s."
+	"aibuilders.command.no_schematics": "No schematics found. Put .litematic or .nbt files in %s or %s.",
+	"aibuilders.command.player_only": "Only a player can do this.",
+	"aibuilders.command.bad_name": "'%s' is not a valid name (1-16 letters, digits or _)."
 }

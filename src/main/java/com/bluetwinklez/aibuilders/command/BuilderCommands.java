@@ -5,9 +5,7 @@ import com.bluetwinklez.aibuilders.build.BuildTask;
 import com.bluetwinklez.aibuilders.build.MaterialResolver;
 import com.bluetwinklez.aibuilders.build.schematic.Schematic;
 import com.bluetwinklez.aibuilders.build.schematic.SchematicStore;
-import com.bluetwinklez.aibuilders.config.AiBuildersConfig;
 import com.bluetwinklez.aibuilders.entity.AgentNpc;
-import com.bluetwinklez.aibuilders.entity.ModEntities;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -34,14 +32,9 @@ import net.minecraft.core.Vec3i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.permissions.Permissions;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
-import net.minecraft.world.level.entity.EntityTypeTest;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.HitResult;
 import org.jspecify.annotations.Nullable;
 
 /** {@code /aibuilders} (short: {@code /aib}). */
@@ -147,19 +140,21 @@ public final class BuilderCommands {
 	}
 
 	private static List<AgentNpc> allNpcs(CommandSourceStack source) {
-		List<AgentNpc> result = new ArrayList<>();
-		for (ServerLevel level : source.getServer().getAllLevels()) {
-			result.addAll(level.getEntities(EntityTypeTest.forClass(AgentNpc.class), e -> e.isAlive()));
-		}
-		return result;
+		return BuilderActions.allNpcs(source.getServer());
 	}
 
 	private static Optional<AgentNpc> findNpc(CommandSourceStack source, String name) {
-		return allNpcs(source).stream().filter(n -> n.npcName().equalsIgnoreCase(name)).findFirst();
+		return BuilderActions.findNpc(source.getServer(), name);
 	}
 
-	private static boolean isGamemaster(CommandSourceStack source) {
-		return source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
+	/** Sends the result to the command source; returns 1 on success, 0 on failure. */
+	private static int send(CommandSourceStack source, BuilderActions.Result result) {
+		if (result.ok()) {
+			source.sendSuccess(result::message, false);
+			return 1;
+		}
+		source.sendFailure(result.message());
+		return 0;
 	}
 
 	/** The named NPC if the command source may control it; otherwise sends an error and returns null. */
@@ -171,8 +166,7 @@ public final class BuilderCommands {
 			source.sendFailure(Component.translatable("aibuilders.command.npc_not_found", name));
 			return null;
 		}
-		ServerPlayer player = source.getPlayer();
-		if (!isGamemaster(source) && (player == null || !npc.get().isOwner(player))) {
+		if (!BuilderActions.Actor.of(source).mayManage(npc.get())) {
 			source.sendFailure(Component.translatable("aibuilders.npc.not_owner"));
 			return null;
 		}
@@ -183,57 +177,20 @@ public final class BuilderCommands {
 
 	private static int spawn(CommandContext<CommandSourceStack> ctx, String skinPlayer) throws CommandSyntaxException {
 		CommandSourceStack source = ctx.getSource();
-		ServerPlayer player = source.getPlayerOrException();
-		String name = StringArgumentType.getString(ctx, "name");
-		if (findNpc(source, name).isPresent()) {
-			source.sendFailure(Component.translatable("aibuilders.command.name_taken", name));
-			return 0;
-		}
-		if (!isGamemaster(source)) {
-			long owned = allNpcs(source).stream().filter(n -> n.isOwner(player)).count();
-			if (owned >= AiBuildersConfig.get().maxNpcsPerPlayer) {
-				source.sendFailure(Component.translatable("aibuilders.command.limit", AiBuildersConfig.get().maxNpcsPerPlayer));
-				return 0;
-			}
-		}
-		ServerLevel level = source.getLevel();
-		AgentNpc npc = ModEntities.BUILDER.create(level, EntitySpawnReason.COMMAND);
-		if (npc == null) {
-			return 0;
-		}
-		npc.snapTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), 0.0F);
-		npc.setup(name, skinPlayer, player.getUUID());
-		level.addFreshEntity(npc);
-		source.sendSuccess(() -> Component.translatable("aibuilders.command.spawned", name), false);
-		return 1;
+		source.getPlayerOrException();
+		return send(source, BuilderActions.spawn(BuilderActions.Actor.of(source), StringArgumentType.getString(ctx, "name"), skinPlayer));
 	}
 
 	private static int remove(CommandContext<CommandSourceStack> ctx, AgentNpc npc) {
-		ServerLevel level = (ServerLevel) npc.level();
-		npc.taskRunner().stop(npc, level);
-		npc.dropInventory(level);
-		npc.discard();
-		ctx.getSource().sendSuccess(() -> Component.translatable("aibuilders.command.removed", npc.npcName()), false);
-		return 1;
+		return send(ctx.getSource(), BuilderActions.remove(BuilderActions.Actor.of(ctx.getSource()), npc.npcName()));
 	}
 
 	private static int stop(CommandContext<CommandSourceStack> ctx, AgentNpc npc) {
-		npc.taskRunner().stop(npc, (ServerLevel) npc.level());
-		ctx.getSource().sendSuccess(() -> Component.translatable("aibuilders.command.stopped", npc.npcName()), false);
-		return 1;
+		return send(ctx.getSource(), BuilderActions.stop(BuilderActions.Actor.of(ctx.getSource()), npc.npcName()));
 	}
 
 	private static int setPaused(CommandContext<CommandSourceStack> ctx, AgentNpc npc, boolean paused) {
-		if (!npc.taskRunner().hasTask()) {
-			ctx.getSource().sendFailure(Component.translatable("aibuilders.npc.idle"));
-			return 0;
-		}
-		npc.taskRunner().setPaused(paused);
-		if (paused) {
-			npc.getNavigation().stop();
-		}
-		ctx.getSource().sendSuccess(() -> Component.translatable(paused ? "aibuilders.command.paused" : "aibuilders.command.resumed", npc.npcName()), false);
-		return 1;
+		return send(ctx.getSource(), BuilderActions.setPaused(BuilderActions.Actor.of(ctx.getSource()), npc.npcName(), paused));
 	}
 
 	private static int status(CommandContext<CommandSourceStack> ctx, AgentNpc npc) {
@@ -250,33 +207,14 @@ public final class BuilderCommands {
 	}
 
 	private static BlockPos defaultPos(CommandSourceStack source) throws CommandSyntaxException {
-		ServerPlayer player = source.getPlayerOrException();
-		HitResult hit = player.pick(32.0, 1.0F, false);
-		if (hit instanceof BlockHitResult blockHit && hit.getType() == HitResult.Type.BLOCK) {
-			return blockHit.getBlockPos().relative(blockHit.getDirection());
-		}
-		return player.blockPosition();
+		return BuilderActions.lookingPos(source.getPlayerOrException());
 	}
 
 	private static int build(CommandContext<CommandSourceStack> ctx, @Nullable BlockPos pos, Rotation rotation, Mirror mirror) throws CommandSyntaxException {
-		AgentNpc npc = managedNpc(ctx);
-		if (npc == null) {
-			return 0;
-		}
 		CommandSourceStack source = ctx.getSource();
-		String schematic = StringArgumentType.getString(ctx, "schematic");
-		if (SchematicStore.find(schematic).isEmpty()) {
-			source.sendFailure(Component.translatable("aibuilders.command.schematic_not_found", schematic));
-			return 0;
-		}
-		if (npc.level() != source.getLevel()) {
-			source.sendFailure(Component.translatable("aibuilders.command.other_dimension", npc.npcName()));
-			return 0;
-		}
 		BlockPos origin = pos != null ? pos : defaultPos(source);
-		npc.taskRunner().start(new BuildTask(schematic, origin, mirror, rotation), npc, (ServerLevel) npc.level());
-		source.sendSuccess(() -> Component.translatable("aibuilders.command.build_started", npc.npcName(), schematic, origin.toShortString()), false);
-		return 1;
+		return send(source, BuilderActions.build(BuilderActions.Actor.of(source),
+			StringArgumentType.getString(ctx, "npc"), StringArgumentType.getString(ctx, "schematic"), origin, rotation, mirror));
 	}
 
 	private static int preview(CommandContext<CommandSourceStack> ctx, @Nullable BlockPos pos, Rotation rotation, Mirror mirror) throws CommandSyntaxException {
